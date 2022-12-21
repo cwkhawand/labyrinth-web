@@ -6,7 +6,50 @@
             x: 9,
             y: 9
         },
-        labyrinth: []
+        labyrinth: [],
+        shift: 0,
+        draw: function() {
+            for (let i = 1; i < maze.dimensions.x+1; i++)
+                for (let j = 1; j < maze.dimensions.y+1; j++)
+                    ctx.drawImage(image, i*64, j*64, 64, 64);
+        },
+        insert: function(insertion, number) {
+            maze.shift = 0;
+
+            maze.draw();
+            
+            this.animate(insertion, number);
+        },
+        animate: function(insertion, number) {
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sliding and fixed images
+            for (let i = 1; i < maze.dimensions.x+1; i++) {
+                for (let j = 1; j < maze.dimensions.y+1; j++) {
+                    if (insertion < 2) {
+                        if(j === number) ctx.drawImage(image, maze.shift + i*64, j*64, 64, 64);
+                        else ctx.drawImage(image, i*64, j*64, 64, 64);
+                    } else if (insertion >= 2) {
+                        if(i === number) ctx.drawImage(image, i*64, maze.shift + j*64, 64, 64);
+                        else ctx.drawImage(image, i*64, j*64, 64, 64);
+                    }
+                }
+            }
+
+            // If the images have reached their final destination, end movement
+            if ((insertion%2 === 1 && maze.shift < -64) || (insertion%2 === 0 && maze.shift > 64)) {
+                maze.shift = 0;
+                return;
+            }
+
+            // Slide the images
+            if (insertion%2 === 1) maze.shift -= 1;
+            else if (insertion%2 === 0) maze.shift += 1;
+
+            // Request another frame
+            requestAnimationFrame(function(){ return maze.animate(insertion, number); });
+        }
     };
 
     let canvas = document.getElementById("maze");
@@ -19,9 +62,7 @@
     // TBD: Support all three tiles
     // Load the tile's sprite sheet
     image.onload = function() {
-        for (let i = 1; i < maze.dimensions.x+1; i++)
-            for (let j = 1; j < maze.dimensions.y+1; j++)
-                ctx.drawImage(image, i*64, j*64, 64, 64);
+        maze.draw();
     };
     image.src = "images/tile.png";
     
@@ -29,36 +70,5 @@
     maze.labyrinth = Array.from({ length: maze.dimensions.x+2 }, () => Array.from({ length: maze.dimensions.y+2 }, () => {
         return [0, 0, 0, 0, 0];
     }));
-
-    let position = 0;
-    function move(insertion, number) {
-        // Clear the canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw sliding and fixed images
-        for (let i = 1; i < maze.dimensions.x+1; i++) {
-            for (let j = 1; j < maze.dimensions.y+1; j++) {
-                if (insertion < 2) {
-                    if(j === number) ctx.drawImage(image, position + i*64, j*64, 64, 64);
-                    else ctx.drawImage(image, i*64, j*64, 64, 64);
-                } else if (insertion >= 2) {
-                    if(i === number) ctx.drawImage(image, i*64, position + j*64, 64, 64);
-                    else ctx.drawImage(image, i*64, j*64, 64, 64);
-                }
-            }
-        }
-
-        // If the images have reached their final destination, end movement
-        if ((insertion%2 === 1 && position < -64) || (insertion%2 === 0 && position > 64)) {
-            return;
-        }
-
-        // Slide the images
-        if (insertion%2 === 1) position -= 1;
-        else if (insertion%2 === 0) position += 1;
-
-        // Request another frame
-        requestAnimationFrame(function(){ return move(insertion, number); });
-    }
 
 </script>
