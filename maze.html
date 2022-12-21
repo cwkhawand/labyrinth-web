@@ -15,7 +15,7 @@
             for (let j = 1; j < 10; j++)
                 ctx.drawImage(image, i*64, j*64, 64, 64);
     };
-    image.src = "tile.png";
+    image.src = "images/tile.png";
     
     // TBD: store maze in a 2D array
     let labyrinth = Array.from({ length: sizeX+2 }, () => Array.from({ length: sizeY+2 }, () => {
