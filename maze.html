@@ -1,24 +1,32 @@
-<!-- Initialize a 9x9 canvas containing 64x64 images -->
-<canvas id="maze" width="704" height="704"></canvas>
+<canvas id="maze"></canvas>
+
 <script>
-    let sizeX = 9,
-        sizeY = 9;
+    let maze = {
+        dimensions: {
+            x: 9,
+            y: 9
+        },
+        labyrinth: []
+    };
 
     let canvas = document.getElementById("maze");
     let ctx = canvas.getContext("2d");
     
+    canvas.width = (maze.dimensions.x+2)*64;
+    canvas.height = (maze.dimensions.y+2)*64;
+
     let image = new Image();
     // TBD: Support all three tiles
     // Load the tile's sprite sheet
     image.onload = function() {
-        for (let i = 1; i < 10; i++)
-            for (let j = 1; j < 10; j++)
+        for (let i = 1; i < maze.dimensions.x+1; i++)
+            for (let j = 1; j < maze.dimensions.y+1; j++)
                 ctx.drawImage(image, i*64, j*64, 64, 64);
     };
     image.src = "images/tile.png";
     
     // TBD: store maze in a 2D array
-    let labyrinth = Array.from({ length: sizeX+2 }, () => Array.from({ length: sizeY+2 }, () => {
+    maze.labyrinth = Array.from({ length: maze.dimensions.x+2 }, () => Array.from({ length: maze.dimensions.y+2 }, () => {
         return [0, 0, 0, 0, 0];
     }));
 
@@ -28,8 +36,8 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw sliding and fixed images
-        for (let i = 1; i < 10; i++) {
-            for (let j = 1; j < 10; j++) {
+        for (let i = 1; i < maze.dimensions.x+1; i++) {
+            for (let j = 1; j < maze.dimensions.y+1; j++) {
                 if (insertion < 2) {
                     if(j === number) ctx.drawImage(image, position + i*64, j*64, 64, 64);
                     else ctx.drawImage(image, i*64, j*64, 64, 64);
