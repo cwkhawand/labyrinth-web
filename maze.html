@@ -7,32 +7,33 @@
             y: 3
         },
         labyrinth: [],
-        sprites: Array.from({ length: 3 }, () => Array.from({ length: 1 })),
+        sprites: [],
         shift: 0,
         draw: function() {
-            // TBD: Draw the maze according to the labyrinth array
-            for (let i = 1; i < maze.dimensions.x+1; i++)
-                for (let j = 1; j < maze.dimensions.y+1; j++)
-                    ctx.drawImage(maze.sprites[0][1], i*64, j*64, 64, 64);
+            for (let i = 0; i < maze.dimensions.x; i++)
+                for (let j = 0; j < maze.dimensions.y; j++) {
+                    ctx.drawImage(this.getSprite(this.labyrinth[j][i]), (i+1)*64, (j+1)*64, 64, 64);
+                }
         },
         insert: function(insertion, number) {
             maze.draw();
             
             this.animate(insertion, number);
         },
+
         animate: function(insertion, number) {
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Draw sliding and fixed images
-            for (let i = 1; i < maze.dimensions.x+1; i++) {
-                for (let j = 1; j < maze.dimensions.y+1; j++) {
+            for (let i = 0; i < maze.dimensions.x; i++) {
+                for (let j = 0; j < maze.dimensions.y; j++) {
                     if (insertion < 2) {
-                        if(j === number) ctx.drawImage(maze.sprites[0][1], maze.shift + i*64, j*64, 64, 64);
-                        else ctx.drawImage(maze.sprites[0][1], i*64, j*64, 64, 64);
+                        if(j === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i]), maze.shift + (i+1)*64, (j+1)*64, 64, 64);
+                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i]), (i+1)*64, (j+1)*64, 64, 64);
                     } else if (insertion >= 2) {
-                        if(i === number) ctx.drawImage(maze.sprites[0][1], i*64, maze.shift + j*64, 64, 64);
-                        else ctx.drawImage(maze.sprites[0][1], i*64, j*64, 64, 64);
+                        if(i === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i]), (i+1)*64, maze.shift + (j+1)*64, 64, 64);
+                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i]), (i+1)*64, (j+1)*64, 64, 64);
                     }
                 }
             }
@@ -49,9 +50,27 @@
 
             // Request another frame
             requestAnimationFrame(function(){ return maze.animate(insertion, number); });
+        },
+        getSprite: function(tile) {
+            // L sprites
+            if (tile[0] === 1 && tile[1] === 1 && tile[2] === 0 && tile[3] === 0) return maze.sprites[0][0];
+            else if (tile[0] === 0 && tile[1] === 1 && tile[2] === 1 && tile[3] === 0) return maze.sprites[0][1];
+            else if (tile[0] === 0 && tile[1] === 0 && tile[2] === 1 && tile[3] === 1) return maze.sprites[0][2];
+            else if (tile[0] === 1 && tile[1] === 0 && tile[2] === 0 && tile[3] === 1) return maze.sprites[0][3];            
+            
+            // I sprites
+            if (tile[0] === 0 && tile[1] === 1 && tile[2] === 0 && tile[3] === 1) return maze.sprites[1][0];
+            else if (tile[0] === 1 && tile[1] === 0 && tile[2] === 1 && tile[3] === 0) return maze.sprites[1][1];
+
+            // T sprites
+            if (tile[0] === 0 && tile[1] === 0 && tile[2] === 1 && tile[3] === 0) return maze.sprites[2][0];
+            else if (tile[0] === 0 && tile[1] === 0 && tile[2] === 0 && tile[3] === 1) return maze.sprites[2][1];
+            else if (tile[0] === 1 && tile[1] === 0 && tile[2] === 0 && tile[3] === 0) return maze.sprites[2][2];
+            else if (tile[0] === 0 && tile[1] === 1 && tile[2] === 0 && tile[3] === 0) return maze.sprites[2][3];
         }
     };
 
+    // Create the rotated variants of the given image
     function createVariants(image) {
         let variants = [];
         for (let i = 1; i < 4; i++) {
@@ -59,12 +78,32 @@
             let ctx = canvas.getContext("2d");
             canvas.width = 64;
             canvas.height = 64;
-            ctx.translate(64, 0);
+            ctx.translate(32, 32);
             ctx.rotate((Math.PI/2)*i);
-            ctx.drawImage(image, 0, 0, 64, 64);
+            ctx.drawImage(image, -32, -32, 64, 64);
             variants.push(canvas);
         }
         return variants;
+    }
+
+    function loadImages () {
+        let counter = 0;
+        return new Promise((resolve, reject) => {
+            for (let i in images) {
+                let image = new Image();
+                image.onload = function() {
+                    if (!maze.sprites[i]) maze.sprites[i] = [];
+                    
+                    maze.sprites[i][0] = image;
+                    maze.sprites[i].push(...createVariants(image));
+
+                    // When all images are loaded, resolve promise
+                    if (++counter === images.length) resolve();
+                };
+                image.crossOrigin="anonymous"
+                image.src = images[i];
+            }
+        });
     }
 
     let canvas = document.getElementById("maze");
@@ -73,37 +112,19 @@
     canvas.width = (maze.dimensions.x+2)*64;
     canvas.height = (maze.dimensions.y+2)*64;
 
-    let images = ["images/L.png",
-                  "images/I.png",
-                  "images/T.png"];
+    let images = ["https://raw.githubusercontent.com/cwkhawand/labyrinth-web/main/images/L.png",
+                  "https://raw.githubusercontent.com/cwkhawand/labyrinth-web/main/images/I.png",
+                  "https://raw.githubusercontent.com/cwkhawand/labyrinth-web/main/images/T.png"];
 
-    for (let i in images) {
-        let image = new Image();
-        image.onload = function() {
-            maze.sprites[i][0] = image;
-            maze.sprites[i].push(...createVariants(image));
-        };
-        image.crossOrigin="anonymous"
-        image.src = images[i];
-    }
 
-    // TBD: store maze in a 2D array
+
     maze.labyrinth = [
-        [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
-        ],
-        [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
-        ],
-        [
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0]
-        ]
+        [[0, 0, 0, 1, 0], [0, 0, 0, 1, 0], [1, 0, 1, 0, 0]],
+        [[1, 0, 1, 0, 0], [0, 1, 0, 1, 0], [0, 1, 0, 1, 0]],
+        [[0, 1, 1, 0, 0], [0, 0, 1, 1, 0], [0, 1, 0, 1, 0]]
     ];
 
+    loadImages().then(() => {
+        maze.draw();
+    });
 </script>
