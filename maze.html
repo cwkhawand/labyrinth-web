@@ -1,12 +1,15 @@
 <canvas id="maze"></canvas>
 <canvas id="temp" width="64" height="64" style="display: none;"></canvas>
+<h2>Extra tile:</h2>
+<canvas id="extra_tile" width="64" height="64"></canvas>
 <script>
     let maze = {
         dimensions: {
-            x: 3,
-            y: 3
+            x: 9,
+            y: 9
         },
         labyrinth: [],
+        extraTile: [],
         sprites: [],
         shift: 0,
         players: [
@@ -16,52 +19,140 @@
                 item: 24
             },
             {
-                x: 2,
-                y: 2,
+                x: 8,
+                y: 8,
                 item: 5
             }
         ],
         draw: function() {
-            for (let i = 0; i < maze.dimensions.x; i++)
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < maze.dimensions.x; i++) {
                 for (let j = 0; j < maze.dimensions.y; j++) {
-                    ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i+1)*64, (j+1)*64, 64, 64);
+                    ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i + 1) * 64, (j + 1) * 64, 64, 64);
                 }
+            }
+
+            extraTileCtx.drawImage(this.getSprite(this.extraTile, [-1, -1]), 0, 0, 64, 64);
         },
-        insert: function(insertion, number) {
-            maze.draw();
-            
-            this.animate(insertion, number);
+        insert: async function(insertion, number) {
+            console.log(`maze.insert(${insertion}, ${number})`);
+            return new Promise(async resolve => {
+                this.draw();
+
+                await this.animate(insertion, number);
+
+                let extraTile;
+                if (insertion === 0) {
+                    extraTile = this.labyrinth[number][this.dimensions.x-1];
+                    for (let i = this.dimensions.x - 2; i >= 0; i--) {
+                        this.labyrinth[number][i + 1] = this.labyrinth[number][i];
+                    }
+                    this.labyrinth[number][0] = this.extraTile;
+
+                    if (this.players[0].y === number) this.players[0].x = (this.players[0].x+1)%this.dimensions.x;
+                    if (this.players[1].y === number) this.players[1].x = (this.players[1].x+1)%this.dimensions.x;
+                } else if (insertion === 1) {
+                    extraTile = this.labyrinth[number][0];
+                    for (let i = 1; i < this.dimensions.x; i++) {
+                        this.labyrinth[number][i - 1] = this.labyrinth[number][i];
+                    }
+                    this.labyrinth[number][this.dimensions.x - 1] = this.extraTile;
+
+                    if (this.players[0].y === number) {
+                        this.players[0].x = (this.players[0].x-1);
+                        if(this.players[0].x < 0) this.players[0].x = this.dimensions.x-1;
+                    }
+                    if (this.players[1].y === number) {
+                        this.players[1].x = (this.players[0].x-1);
+                        if(this.players[1].x < 0) this.players[1].x = this.dimensions.x-1;
+                    }
+                } else if (insertion === 2) {
+                    extraTile = this.labyrinth[this.dimensions.y-1][number];
+                    for (let i = this.dimensions.y - 2; i >= 0; i--) {
+                        this.labyrinth[i + 1][number] = this.labyrinth[i][number];
+                    }
+                    this.labyrinth[0][number] = this.extraTile;
+
+                    if (this.players[0].x === number) this.players[0].y = (this.players[0].y+1)%this.dimensions.x;
+                    if (this.players[1].x === number) this.players[1].y = (this.players[1].y+1)%this.dimensions.x;
+                } else if (insertion === 3) {
+                    extraTile = this.labyrinth[0][number];
+                    for (let i = 1; i < this.dimensions.y; i++) {
+                        this.labyrinth[i - 1][number] = this.labyrinth[i][number];
+                    }
+                    this.labyrinth[this.dimensions.y - 1][number] = this.extraTile;
+
+                    if (this.players[0].x === number) {
+                        this.players[0].y = (this.players[0].y-1);
+                        if(this.players[0].y < 0) this.players[0].y = this.dimensions.y-1;
+                    }
+                    if (this.players[1].x === number) {
+                        this.players[1].y = (this.players[0].y-1);
+                        if(this.players[1].y < 0) this.players[1].y = this.dimensions.y-1;
+                    }
+                }
+
+                this.extraTile = extraTile;
+
+                resolve();
+            });
         },
 
         animate: function(insertion, number) {
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
+            let coord = [];
+            if (insertion === 0) {
+                coord[0] = 0;
+                coord[1] = number;
+            } else if (insertion === 1) {
+                coord[0] = this.dimensions.x-1;
+                coord[1] = number;
+            } else if (insertion === 2) {
+                coord[0] = number;
+                coord[1] = 0;
+            } else if (insertion === 3) {
+                coord[0] = number;
+                coord[1] = this.dimensions.y-1;
+            }
+
+            if (insertion < 2) {
+                ctx.drawImage(this.getSprite(this.extraTile, [-1, -1]), maze.shift + (coord[0] + 1) * 64 + ((insertion === 0) ? -64 : 64), (coord[1] + 1) * 64, 64, 64);
+            } else {
+                ctx.drawImage(this.getSprite(this.extraTile, [-1, -1]), (coord[0] + 1) * 64, maze.shift + (coord[1] + 1) * 64 + ((insertion === 2) ? -64 : 64), 64, 64);
+            }
+
             // Draw sliding and fixed images
             for (let i = 0; i < maze.dimensions.x; i++) {
                 for (let j = 0; j < maze.dimensions.y; j++) {
                     if (insertion < 2) {
-                        if(j === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), maze.shift + (i+1)*64, (j+1)*64, 64, 64);
-                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i+1)*64, (j+1)*64, 64, 64);
+                        if (j === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), maze.shift + (i + 1) * 64, (j + 1) * 64, 64, 64);
+                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i + 1) * 64, (j + 1) * 64, 64, 64);
                     } else if (insertion >= 2) {
-                        if(i === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i+1)*64, maze.shift + (j+1)*64, 64, 64);
-                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i+1)*64, (j+1)*64, 64, 64);
+                        if (i === number) ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i + 1) * 64, maze.shift + (j + 1) * 64, 64, 64);
+                        else ctx.drawImage(this.getSprite(this.labyrinth[j][i], [j, i]), (i + 1) * 64, (j + 1) * 64, 64, 64);
                     }
                 }
             }
 
             // If the images have reached their final destination, end movement
-            if ((insertion%2 === 1 && maze.shift < -64) || (insertion%2 === 0 && maze.shift > 64)) {
+            if ((insertion % 2 === 1 && maze.shift < -64) || (insertion % 2 === 0 && maze.shift > 64)) {
                 maze.shift = 0;
+                Promise.resolve();
                 return;
             }
 
             // Slide the images
-            if (insertion%2 === 1) maze.shift -= 1;
-            else if (insertion%2 === 0) maze.shift += 1;
+            if (insertion % 2 === 1) maze.shift -= 1;
+            else if (insertion % 2 === 0) maze.shift += 1;
 
-            // Request another frame
-            requestAnimationFrame(function(){ return maze.animate(insertion, number); });
+            return new Promise(resolve => {
+                // Request another frame
+                requestAnimationFrame(resolve);
+            }).then(function () {
+                return maze.animate(insertion, number);
+            });
         },
         getSprite: function(tile, coordinates) {
             let sprite;
@@ -81,10 +172,12 @@
             else if (tile[0] === 1 && tile[1] === 0 && tile[2] === 0 && tile[3] === 0) sprite = maze.sprites[2][2];
             else if (tile[0] === 0 && tile[1] === 1 && tile[2] === 0 && tile[3] === 0) sprite = maze.sprites[2][3];
 
+            let temp_canvas = document.getElementById("temp");
+            let context = temp_canvas.getContext("2d");
+            context.clearRect(0, 0, temp_canvas.width, temp_canvas.height);
+
             let playerOnTile = false;
             if (maze.players[0].y === coordinates[0] && maze.players[0].x === coordinates[1]) {
-                let temp_canvas = document.getElementById("temp");
-                let context = temp_canvas.getContext("2d");
                 context.drawImage(sprite, 0, 0, 64, 64);
                 context.drawImage(maze.sprites[4][0], (tile[4] === 0) ? 12 : 30, 5, 40, 40);
                 sprite = temp_canvas;
@@ -92,17 +185,13 @@
             }
 
             if (maze.players[1].y === coordinates[0] && maze.players[1].x === coordinates[1]) {
-                let temp_canvas = document.getElementById("temp");
-                let context = temp_canvas.getContext("2d");
                 context.drawImage(sprite, 0, 0, 64, 64);
-                context.drawImage(maze.sprites[5][0], 12, 5, 40, 40);
+                context.drawImage(maze.sprites[5][0], (tile[4] === 0) ? 12 : 30, 5, 40, 40);
                 sprite = temp_canvas;
                 playerOnTile = true;
             }
 
             if (tile[4] !== 0) {
-                let temp_canvas = document.getElementById("temp");
-                let context = temp_canvas.getContext("2d");
                 context.drawImage(sprite, 0, 0, 64, 64);
                 context.beginPath();
                 context.arc((!playerOnTile) ? 32 : 16, 32, 12, 0, 2 * Math.PI, false);
@@ -168,6 +257,9 @@
 
     let canvas = document.getElementById("maze");
     let ctx = canvas.getContext("2d");
+
+    let extraTileCanvas = document.getElementById("extra_tile");
+    let extraTileCtx = extraTileCanvas.getContext("2d");
     
     canvas.width = (maze.dimensions.x+2)*64;
     canvas.height = (maze.dimensions.y+2)*64;
@@ -181,13 +273,45 @@
         "images/Player_2.png"
     ];
 
-    maze.labyrinth = [
-        [[0, 0, 0, 1, 24], [0, 0, 0, 1, 0], [1, 0, 1, 0, 0]],
-        [[1, 0, 1, 0, 0], [0, 1, 0, 1, 5], [0, 1, 0, 1, 1]],
-        [[0, 1, 1, 0, 0], [0, 0, 1, 1, 0], [0, 1, 0, 1, 0]]
-    ];
+    let blocks = [
+        [1, 0, 0, 1, 0],
+        [1, 1, 0, 0, 0],
+        [0, 1, 1, 0, 0],
+        [0, 0, 1, 1, 0],
+        [0, 0, 0, 1, 0],
+        [1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0],
+        [0, 1, 0, 1, 0],
+        [1, 0, 1, 0, 0]
+    ]
 
-    loadImages().then(() => {
+    for (let i = 0; i < maze.dimensions.y; i++) {
+        for (let j = 0; j < maze.dimensions.x; j++) {
+            if (!maze.labyrinth[i]) maze.labyrinth[i] = [];
+            maze.labyrinth[i][j] = blocks[Math.floor(Math.random()*100)%(blocks.length-1)];
+            maze.labyrinth[i][j][4] = Math.floor(Math.random()*100)%25;
+        }
+    }
+
+    loadImages().then(async () => {
+        maze.draw();
+
+        await maze.insert(0, 1);
+        maze.draw();
+        await maze.insert(0, 0);
+        maze.draw();
+        await maze.insert(3, 1);
+        maze.draw();
+        await maze.insert(1, 1);
+        maze.draw();
+        await maze.insert(2, 2);
+        maze.draw();
+        await maze.insert(0, 0);
+        maze.draw();
+        await maze.insert(0, 0);
+        maze.draw();
+        await maze.insert(0, 0);
         maze.draw();
     });
 </script>
